@@ -29,7 +29,7 @@ class PredictFraud():
         with open('rf_model', 'rb') as m:
             rf_model = pickle.load(m)
         predictions = rf_model.predict_proba(self.df)
-        self.df['prediction'] = [1 if p > .2 else 0 for p in predictions[:,1]]
+        self.df['prediction'] = predictions
 
     def export_to_db(self):
         self.export_df = pd.concat((self.df['object_id'],self.df['prediction']), axis = 1)
