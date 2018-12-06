@@ -45,19 +45,21 @@ class PredictFraud():
         with open('rf_model', 'rb') as m:
             rf_model = pickle.load(m)
         predictions = rf_model.predict_proba(self.df)
-        self.df['prediction'] = predictions[:,1].astype(int)
-
-    def export_to_db(self):
-        self.export_df = pd.concat((self.df['object_id'],self.df['prediction']), axis = 1)
+        self.df['prediction'] = predictions[:,1]
+    
+    def connect_to_db(self):
         #engine = create_engine('postgresql+psycopg2://chrisjoetrevjason:ElephantBacon@frauddb.cz8soh9v5z3q.us-west-1.rds.amazonaws.com:5432/frauddbone')
-        engine = create_engine('postgresql+psycopg2://josephdoperalski:@localhost:5432/predictions')
-        conn = engine.raw_connection()
-        cur = conn.cursor()
+        self.engine = create_engine('postgresql+psycopg2://josephdoperalski:@localhost:5432/predictions')
+        self.conn = self.engine.raw_connection()
+        self.cur = self.conn.cursor()
+        
+    def export_to_db(self):
+        self.export_df = pd.concat((self.df['object_id'],self.df['prediction']), axis = 1)               
         output = io.StringIO()
         self.export_df.to_csv(output, sep='\t', header=False, index=False)
         output.seek(0)
         contents = output.getvalue()
-        cur.copy_from(output, 'predictions', null="") # null values become ''
-        conn.commit()
+        self.cur.copy_from(output, 'predictions', null="") # null values become ''
+        self.conn.commit()
         
         
