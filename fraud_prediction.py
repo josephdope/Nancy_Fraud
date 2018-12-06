@@ -1,18 +1,17 @@
 import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import recall_score, precision_score, roc_curve
-from sklearn.feature_selection import RFE
-import matplotlib.pyplot as plt
 import pickle
+from sqlalchemy import create_engine
+import psycopg2 
+import io
 
 
 class PredictFraud():
     
     def __init__(self, df):
         self.df = df
+        self.newdf = df
+        self.export_df = None
+        self.new_data = None
         
     def manipulate_data(self):
         with open('high_risk_list', 'rb') as f:
@@ -31,4 +30,17 @@ class PredictFraud():
             rf_model = pickle.load(m)
         predictions = rf_model.predict_proba(self.df)
         self.df['prediction'] = [1 if p > .2 else 0 for p in predictions[:,1]]
+
+    def export_to_db(self):
+        self.export_df = pd.concat((self.df['object_id'],self.df['prediction']), axis = 1)
+        engine = create_engine('postgresql+psycopg2://chrisjoetrevjason:ElephantBacon@frauddb.cz8soh9v5z3q.us-west-1.rds.amazonaws.com:5432/frauddbone')
+        conn = engine.raw_connection()
+        cur = conn.cursor()
+        output = io.StringIO()
+        self.export_df.to_csv(output, sep='\t', header=False, index=False)
+        output.seek(0)
+        contents = output.getvalue()
+        cur.copy_from(output, 'predictions', null="") # null values become ''
+        conn.commit()
+        
         
